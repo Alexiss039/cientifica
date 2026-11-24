@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El tubo que no conviene · Dijkstra en un acueducto veredal</title>
+<style>
+  :root {
+    --ink: #17222b;
+    --muted: #55626d;
+    --line: #d5e0e6;
+    --paper: #e9f0ee;
+    --card: #fbfdfc;
+    --water: #1a56db;
+    --teal: #0f6e68;
+    --warn: #b8431f;
+    --gold: #a16207;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 0% -10%, #f6fbf9 0%, transparent 55%),
+      var(--paper);
+    overflow: hidden;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+  code, .mono { font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", monospace; }
+
+  .app { height: 100%; display: grid; grid-template-rows: 54px minmax(0, 1fr) 50px; }
+  header.top, footer.nav { display: flex; align-items: center; gap: 14px; padding: 0 18px; }
+  header.top { border-bottom: 1px solid var(--line); background: rgba(233, 240, 238, .94); }
+  .brand { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .brand b { color: var(--ink); font-weight: 650; letter-spacing: 0; text-transform: none; font-size: 14px; }
+  #slideName { margin-left: auto; font-family: Georgia, "Palatino Linotype", serif; font-size: 16px; }
+  footer.nav { border-top: 1px solid var(--line); background: rgba(251, 253, 252, .95); }
+  .meter { flex: 1; height: 4px; background: #d3dfdc; border-radius: 99px; overflow: hidden; }
+  #meter-bar { height: 100%; width: 0; background: var(--water); }
+  #pos { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); min-width: 52px; }
+  .keys { font-size: 12px; color: var(--muted); }
+
+  .slide { display: none; height: 100%; overflow: auto; }
+  .slide.active { display: block; }
+  .slide.full.active { display: flex; flex-direction: column; overflow: hidden; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 32px 28px 48px; }
+  h1, h2, h3 { font-family: Georgia, "Palatino Linotype", serif; font-weight: 500; letter-spacing: -.02em; }
+  h2 { font-size: clamp(28px, 3.6vw, 42px); line-height: 1.1; margin: 0 0 14px; }
+  p { font-size: 18px; line-height: 1.5; }
+  .lede { font-size: 20px; max-width: 66ch; }
+  .muted { color: var(--muted); }
+  .fine { font-size: 13px; color: var(--muted); line-height: 1.45; }
+
+  .hero { min-height: 100%; display: grid; align-items: center; padding: 28px 5vw 40px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); gap: 28px; align-items: center; }
+  .kicker { letter-spacing: .14em; text-transform: uppercase; font-size: 12px; color: var(--water); margin: 0 0 12px; }
+  .hero h1 { font-size: clamp(46px, 6vw, 82px); line-height: .95; margin: 0 0 18px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+  .pill { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 14px; }
+  .pill i { font-style: normal; display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 6px; background: var(--water); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 16px 14px; }
+  .card h3 { display: block; font-size: 22px; margin: 0 0 6px; }
+  .card p { margin: 0 0 8px; font-size: 15px; line-height: 1.45; }
+  .grid-2 { display: grid; grid-template-columns: 1.05fr .95fr; gap: 22px; align-items: start; }
+  .grid-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .card.water { box-shadow: inset 4px 0 0 var(--water); }
+  .card.warn { box-shadow: inset 4px 0 0 var(--warn); }
+  .card.ok { box-shadow: inset 4px 0 0 var(--teal); }
+  .note { border-left: 3px solid var(--gold); padding: 4px 0 4px 14px; color: var(--muted); font-size: 16px; }
+  pre.snip {
+    background: #14202a; color: #eaf2f6; border-radius: 16px; padding: 16px 18px; overflow: auto;
+    font-size: 13px; line-height: 1.45; margin: 0;
+  }
+  .netbox { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .netbox svg { width: 100%; height: auto; display: block; }
+  ul.adj { list-style: none; padding: 0; margin: 0; font-size: 14.5px; line-height: 1.35; }
+  ul.adj li { padding: 5px 0; border-bottom: 1px dashed var(--line); }
+  ul.adj li:last-child { border-bottom: 0; }
+  ul.adj b { font-family: Georgia, serif; font-weight: 600; }
+  ul.adj span { white-space: nowrap; }
+  .qa { display: block; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 0 0 8px; }
+  .qa b { font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
+  .answer { display: none; margin: -4px 0 12px; padding: 0 8px 8px 16px; color: var(--muted); }
+  .answer.show { display: block; }
+  .bigans { font-family: Georgia, serif; font-size: clamp(54px, 8vw, 96px); line-height: 1; margin: 6px 0 4px; color: var(--water); }
+  .bigans small { font-family: "Segoe UI", sans-serif; font-size: 18px; color: var(--muted); margin-left: 8px; }
+
+  .btn, .transport button, footer button, .mini {
+    border: 1px solid #c6d4da; background: var(--card); border-radius: 999px; padding: 8px 14px;
+  }
+  .btn.primary, button.primary, .transport button.primary { background: var(--ink); color: #fbfdfc; border-color: var(--ink); }
+  .transport button.alert { border-color: var(--warn); color: var(--warn); }
+
+  .lab { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 350px; grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; padding: 12px 14px 8px; }
+  .lab-stage { min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .lab-stage svg { width: 100%; height: 100%; display: block; }
+  .lab-panel { min-height: 0; overflow: auto; padding: 4px 8px 12px 0; }
+  .lab-panel h2 { font-size: 24px; margin: 0 0 8px; }
+  .lab-panel p { font-size: 15px; margin: 0 0 10px; }
+  .eyebrow { margin: 0; color: var(--water); letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
+  .struct-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 8px 0; }
+  .pathline { font-family: Georgia, serif; font-size: 16px !important; }
+  .bignum { font-family: Georgia, serif; font-size: 34px; line-height: 1; margin: 4px 0 8px; }
+  .bignum small { display: block; margin-top: 4px; font-family: "Segoe UI", sans-serif; font-size: 13px; color: var(--muted); }
+  .front { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .fr { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 4px 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+  .fr.next { border-color: #e8c56b; background: #fff8e8; }
+  .fr b { font-variant-numeric: tabular-nums; font-weight: 650; }
+  .pseudo { list-style: none; margin: 8px 0 0; padding: 0; }
+  .pseudo li { padding: 4px 8px; font-size: 12.5px; color: #34424d; border-radius: 8px; }
+  .pseudo li code { font-size: 12.5px; }
+  .pseudo li.on { background: #fff4d6; box-shadow: inset 3px 0 0 var(--water); }
+  .legend { list-style: none; padding: 0; margin: 12px 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 99px; margin-right: 6px; vertical-align: -1px; }
+  .lg.pend { background: #f6e2a8; }
+  .lg.ok { background: #1e3a5f; }
+  .lg.now { background: #c2410c; }
+  .lg.road { background: var(--water); }
+  .lg.good { background: #188038; }
+  .lg.bad { background: #d93025; }
+
+  .transport { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 8px; }
+  .transport .grow { flex: 1 1 160px; }
+  input[type="range"] { width: 100%; accent-color: var(--water); }
+
+  .pulse { transform-box: fill-box; transform-origin: center; animation: ping 1.4s ease-out infinite; }
+  @keyframes ping { 0% { transform: scale(1); opacity: .75; } 100% { transform: scale(2.1); opacity: 0; } }
+
+  @media (max-width: 980px) {
+    .hero-grid, .grid-2, .grid-eq { grid-template-columns: 1fr; }
+    .lab { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(180px, 34vh) auto; }
+    .lab-panel { padding: 8px 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">Programación científica · Taller de grafos · <b>Problema 4.7</b></div>
+    <div id="slideName">Inicio</div>
+  </header>
+  <main id="deck">
+
+    <!-- 1. Inicio -->
+    <section class="slide active" data-title="Inicio">
+      <div class="hero">
+        <div class="hero-grid">
+          <div>
+            <p class="kicker">Problema 4.7 · Dijkstra</p>
+            <h1>El tubo que no conviene.</h1>
+            <p class="lede">La vereda inventada <b>Alto Verde</b> recibe agua de un tanque en la loma. <b>¿Cuál es la menor longitud de tubería desde el tanque hasta la escuela?</b></p>
+            <div class="pills">
+              <span class="pill"><i></i>Dijkstra · metros de tubería</span>
+              <span class="pill"><i></i>10 puntos · 15 tubos</span>
+            </div>
+            <p><button type="button" class="btn primary" id="start-btn">Empezar</button></p>
+            <p class="fine">Doble clic en este archivo. No hace falta servidor, ni instalar nada, ni conexión. Flechas ← → cambian de diapositiva. En el laboratorio, N y P mueven el algoritmo y la barra espaciadora lo reproduce.</p>
+          </div>
+          <div class="netbox"><svg id="svg-intro" viewBox="0 0 1020 540" role="img" aria-label="Red de tubos de la vereda Alto Verde"></svg></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. El problema -->
+    <section class="slide" data-title="El problema">
+      <div class="wrap">
+        <p class="kicker">La situación</p>
+        <h2>Un tanque, una escuela y tubos de distinto largo.</h2>
+        <div class="grid-2">
+          <div>
+            <p>El acueducto de Alto Verde es una red de <b>15 tubos</b> entre <b>10 puntos</b>: el tanque, tres válvulas, cinco sitios de la vereda (Finca Los Pinos, Capilla, Lavadero, Tienda y Cancha) y la escuela, que es el destino.</p>
+            <p>Cada tubo tiene una <b>longitud en metros</b>, un número positivo escrito sobre él. Se pide el recorrido de tubería más corto desde <b>Tanque El Alto</b> hasta la <b>Escuela</b>.</p>
+            <p class="note">El largo del trazo en pantalla no es el peso: manda el número. Un tubo dibujado corto puede medir más que uno dibujado largo.</p>
+          </div>
+          <div>
+            <article class="card water">
+              <h3>La pregunta</h3>
+              <p>¿Cuál es la menor longitud de tubería, en metros, desde el tanque hasta la escuela?</p>
+            </article>
+            <br>
+            <article class="card warn">
+              <h3>Por qué Dijkstra</h3>
+              <p>Los pesos son positivos y la pregunta es una <b>suma de metros</b>, no un conteo de tubos. Contar tubos con BFS respondería otra pregunta.</p>
+              <p>Hay dos tubos directos que parecen buena idea y no lo son. El laboratorio los muestra.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. El grafo y su lista de adyacencia -->
+    <section class="slide" data-title="El grafo">
+      <div class="wrap">
+        <p class="kicker">El grafo propio</p>
+        <h2>El dibujo y la lista de adyacencia son el mismo grafo.</h2>
+        <div class="grid-2">
+          <div class="netbox"><svg id="svg-graph" viewBox="0 0 1020 540" role="img" aria-label="Grafo de Alto Verde con las longitudes en metros"></svg></div>
+          <div class="card">
+            <h3>Lista de adyacencia</h3>
+            <p class="fine">Vecino y longitud del tubo, en metros.</p>
+            <ul class="adj" id="adj-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. La idea de Dijkstra -->
+    <section class="slide" data-title="Dijkstra">
+      <div class="wrap">
+        <p class="kicker">Menor distancia</p>
+        <h2>Dijkstra confirma siempre el pendiente más cercano al tanque.</h2>
+        <div class="grid-2">
+          <div>
+            <p>Cada punto guarda la <b>mejor distancia conocida</b> desde el tanque y el <b>anterior</b>: el punto desde el cual se consiguió esa marca. Al empezar, el tanque está a 0 m y el resto en infinito.</p>
+            <p>En cada paso se confirma el pendiente con menor marca. Con longitudes que no restan, esa marca ya no puede mejorar. Después se prueba cada tubo que sale de él: <b>marca de este punto + longitud del tubo</b>. Si la suma es menor que la marca del vecino, se actualiza; si no, el tubo se descarta.</p>
+            <p class="note">Conocer un camino hasta la escuela no basta. Se confirma cuando la escuela es el pendiente más cercano.</p>
+          </div>
+          <div id="trap-cards"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Laboratorio -->
+    <section class="slide full" data-title="Laboratorio" data-player="dij">
+      <div class="lab" id="lab">
+        <div class="lab-stage"><svg id="svg-lab" viewBox="0 0 1020 540" role="img" aria-label="Laboratorio de Dijkstra sobre la red de tubos"></svg></div>
+        <aside class="lab-panel">
+          <p class="eyebrow">Dijkstra · metros de tubería</p>
+          <p class="bignum" data-stat>∞</p>
+          <h2 data-step-title>Lista para empezar</h2>
+          <p data-step-text></p>
+          <p class="pathline" data-route></p>
+          <div class="struct-label">Pendientes · primero el más cercano</div>
+          <div class="front" data-front></div>
+          <ol class="pseudo" data-code></ol>
+          <ul class="legend">
+            <li><i class="lg pend"></i>Pendiente, todavía puede mejorar</li>
+            <li><i class="lg ok"></i>Confirmado</li>
+            <li><i class="lg now"></i>Punto del paso actual</li>
+            <li><i class="lg good"></i>Tubo que mejora la marca</li>
+            <li><i class="lg bad"></i>Tubo descartado: no mejora la marca</li>
+            <li><i class="lg road"></i>Ruta que se va reconstruyendo</li>
+          </ul>
+          <p class="fine">El número del círculo es la mejor distancia conocida, en metros. El número sobre cada tubo es su longitud, en metros. Anillo verde: tanque. Anillo rojo: escuela.</p>
+        </aside>
+        <div class="transport">
+          <button type="button" data-first>Reiniciar</button>
+          <button type="button" data-prev>Anterior</button>
+          <button type="button" data-next>Siguiente</button>
+          <button type="button" data-mark>Siguiente punto confirmado</button>
+          <button type="button" class="alert" data-trap>Ver el tubo descartado</button>
+          <button type="button" class="primary" data-play>Reproducir</button>
+          <button type="button" data-last>Ver ruta</button>
+          <span class="grow"><input data-range type="range" min="0" max="1" value="0" aria-label="Paso del algoritmo"></span>
+          <span data-count>1 / 1</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. La respuesta -->
+    <section class="slide" data-title="La respuesta">
+      <div class="wrap">
+        <p class="kicker">Al cierre</p>
+        <h2>La menor longitud de tubería es <span id="ans-short"></span>.</h2>
+        <div class="grid-2">
+          <div>
+            <p class="bigans" id="ans-big"></p>
+            <p class="pathline" id="ans-route" style="font-family: Georgia, serif; font-size: 20px;"></p>
+            <p class="fine" id="ans-parts"></p>
+            <article class="card warn">
+              <h3>El tubo que no convenía</h3>
+              <p id="ans-trap"></p>
+            </article>
+            <br>
+            <article class="card ok">
+              <h3>Un punto confirmado que no está en la ruta</h3>
+              <p id="ans-off"></p>
+            </article>
+          </div>
+          <div class="netbox"><svg id="svg-answer" viewBox="0 0 1020 540" role="img" aria-label="Ruta mínima resaltada"></svg></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. En Python -->
+    <section class="slide" data-title="En Python">
+      <div class="wrap">
+        <p class="kicker">Del dibujo al código</p>
+        <h2>El mismo grafo, en una lista de pares.</h2>
+        <p>La lista de adyacencia de la diapositiva 3 es esta estructura: cada punto guarda pares <span class="mono">(vecino, metros)</span>. Con <span class="mono">heapq</span> como cola de prioridad, Dijkstra repite lo que mostró el laboratorio.</p>
+        <pre class="snip" id="py-code"></pre>
+        <p class="fine">El resultado del código coincide con el cierre del laboratorio: la misma ruta y los mismos metros.</p>
+      </div>
+    </section>
+
+    <!-- 8. Cierre -->
+    <section class="slide" data-title="Cierre">
+      <div class="wrap">
+        <p class="kicker">Para llevar</p>
+        <h2>Menos tubos no es menos metros.</h2>
+        <p>La pregunta pide metros de tubería. Por eso se usa una cola de prioridad y no una cola simple.</p>
+        <button type="button" class="qa"><b>¿Por qué no sirve contar tubos con BFS?</b></button>
+        <p class="answer" id="qa-bfs"></p>
+        <button type="button" class="qa"><b>¿Por qué se confirmó Válvula Alta si no está en la ruta?</b></button>
+        <p class="answer" id="qa-off"></p>
+        <button type="button" class="qa"><b>¿Por qué se descartó el tubo directo de 600 m?</b></button>
+        <p class="answer" id="qa-trap"></p>
+        <button type="button" class="qa"><b>¿Y si un tubo pudiera tener longitud negativa?</b></button>
+        <p class="answer">Un tubo real no resta metros. Si una longitud pudiera ser negativa, confirmar un punto dejaría de ser seguro: otro camino más largo podría terminar siendo más corto. Con longitudes positivas, la marca del pendiente más cercano ya no cambia.</p>
+        <p class="fine">Archivo único: HTML, CSS y JavaScript. Ábrelo con doble clic cada vez que quieras repetir el taller.</p>
+      </div>
+    </section>
+
+  </main>
+  <footer class="nav">
+    <button type="button" id="prev">Anterior</button>
+    <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
+    <span class="keys">← → · N P · espacio</span>
+    <span id="pos">1 / 1</span>
+    <button type="button" class="primary" id="next">Siguiente</button>
+  </footer>
+</div>
+<script>
+/* ---------- Datos: el grafo propio (metros de tubería) ---------- */
+const PLACES = [
+  { id: "TQ", name: "Tanque El Alto",   x: 90,  y: 270, lab: [0, -34, "middle"] },
+  { id: "VA", name: "Válvula Alta",     x: 250, y: 120, lab: [0, -34, "middle"] },
+  { id: "VQ", name: "Válvula Quebrada", x: 250, y: 430, lab: [0, 44, "middle"] },
+  { id: "FP", name: "Finca Los Pinos",  x: 400, y: 275, lab: [30, -26, "start"] },
+  { id: "CP", name: "Capilla",          x: 560, y: 110, lab: [0, -34, "middle"] },
+  { id: "VC", name: "Válvula Camino",   x: 560, y: 270, lab: [0, 44, "middle"] },
+  { id: "LA", name: "Lavadero",         x: 470, y: 455, lab: [0, 44, "middle"] },
+  { id: "TI", name: "Tienda",           x: 760, y: 100, lab: [0, -34, "middle"] },
+  { id: "CA", name: "Cancha",           x: 760, y: 400, lab: [0, 44, "middle"] },
+  { id: "ES", name: "Escuela",          x: 930, y: 270, lab: [0, -34, "middle"] }
+];
+/* [extremo, extremo, metros] */
+const EDGES = [
+  ["TQ", "VA", 120], ["TQ", "VQ", 210], ["TQ", "FP", 460],
+  ["VA", "FP", 180], ["VQ", "FP", 150], ["VA", "CP", 200],
+  ["FP", "VC", 170], ["VQ", "LA", 190], ["CP", "TI", 160],
+  ["CP", "VC", 140], ["VC", "CA", 600], ["VC", "ES", 400],
+  ["TI", "ES", 300], ["CA", "ES", 150], ["LA", "CA", 210]
+];
+const START = "TQ";
+const END = "ES";
+
+const CODE = [
+  "dist[origen] ← 0; el resto ← ∞",
+  "pendientes ← {origen}",
+  "mientras pendientes no esté vacío:",
+  "u ← pendiente con menor dist; confirmar u",
+  "si u es el destino, reconstruir y terminar",
+  "para cada tubo (u, v) con v no confirmado:",
+  "si dist[u] + metros(u, v) < dist[v], actualizar; si no, descartar el tubo"
+];
+
+const PLACE = Object.fromEntries(PLACES.map((p) => [p.id, p]));
+const ADJ = {};
+PLACES.forEach((p) => { ADJ[p.id] = []; });
+EDGES.forEach(([a, b, w]) => { ADJ[a].push({ to: b, w }); ADJ[b].push({ to: a, w }); });
+Object.keys(ADJ).forEach((id) => ADJ[id].sort((u, v) => PLACE[u.to].name.localeCompare(PLACE[v.to].name, "es")));
+
+function edgeKey(a, b) { return a < b ? a + "|" + b : b + "|" + a; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function nameOf(id) { return PLACE[id].name; }
+function mts(m) { return (m == null || !isFinite(m)) ? "∞" : Math.round(m) + " m"; }
+function tubos(n) { return n === 1 ? "1 tubo" : n + " tubos"; }
+
+function pathFrom(prev, end, start) {
+  if (!prev) return null;
+  if (end !== start && prev[end] == null) return null;
+  const path = [];
+  let c = end;
+  const guard = new Set();
+  while (c != null && !guard.has(c)) { guard.add(c); path.push(c); if (c === start) break; c = prev[c]; }
+  path.reverse();
+  return path[0] === start ? path : null;
+}
+function pathMeters(path) {
+  let t = 0;
+  for (let i = 1; i < path.length; i++) t += ADJ[path[i - 1]].find((e) => e.to === path[i]).w;
+  return t;
+}
+
+/* Dijkstra silencioso; skip = tubo que se ignora (para hallar el rodeo) */
+function silentDijkstra(start, end, skip) {
+  const dist = {}, prev = {};
+  PLACES.forEach((p) => { dist[p.id] = Infinity; prev[p.id] = null; });
+  dist[start] = 0;
+  const settled = new Set();
+  const pq = [{ id: start, d: 0 }];
+  while (pq.length) {
+    pq.sort((a, b) => a.d - b.d || a.id.localeCompare(b.id));
+    const it = pq.shift();
+    if (settled.has(it.id) || it.d !== dist[it.id]) continue;
+    settled.add(it.id);
+    ADJ[it.id].forEach((e) => {
+      if (settled.has(e.to)) return;
+      if (skip && edgeKey(it.id, e.to) === skip) return;
+      const alt = dist[it.id] + e.w;
+      if (alt < dist[e.to]) { dist[e.to] = alt; prev[e.to] = it.id; pq.push({ id: e.to, d: alt }); }
+    });
+  }
+  return { dist, prev, meters: dist[end], path: pathFrom(prev, end, start) };
+}
+
+/* BFS silencioso: menos tubos, ignorando los metros (solo para el contraste del cierre) */
+function silentBfs(start, end) {
+  const prev = { [start]: null }, q = [start];
+  while (q.length) {
+    const u = q.shift();
+    if (u === end) break;
+    ADJ[u].forEach((e) => { if (!(e.to in prev)) { prev[e.to] = u; q.push(e.to); } });
+  }
+  const path = pathFrom(prev, end, start);
+  return { path, hops: path.length - 1, meters: pathMeters(path) };
+}
+
+/* Tubos directos que no convienen: hay un rodeo de 2 o más tubos más corto que el tubo mismo */
+const TRAPS = EDGES.map(([a, b, w]) => {
+  const alt = silentDijkstra(a, b, edgeKey(a, b));
+  return alt.path && alt.path.length >= 3 && alt.meters < w ? { a, b, w, alt: alt.meters, via: alt.path } : null;
+}).filter(Boolean);
+const TRAP_BY_KEY = Object.fromEntries(TRAPS.map((t) => [edgeKey(t.a, t.b), t]));
+
+/* ---------- Pasos de Dijkstra ---------- */
+function frontierFrom(dist, settled) {
+  return Object.keys(dist)
+    .filter((id) => isFinite(dist[id]) && !settled.has(id))
+    .map((id) => ({ id, d: dist[id] }))
+    .sort((a, b) => a.d - b.d || a.id.localeCompare(b.id));
+}
+function snapOf(dist, prev, settled) {
+  return { dist: { ...dist }, prev: { ...prev }, settled: [...settled], frontier: frontierFrom(dist, settled), current: null, focus: null, path: null };
+}
+
+function dijkstraSteps() {
+  const dist = {}, prev = {};
+  PLACES.forEach((p) => { dist[p.id] = Infinity; prev[p.id] = null; });
+  dist[START] = 0;
+  const settled = new Set();
+  const pq = [{ id: START, d: 0 }];
+  const steps = [];
+
+  steps.push({ ...snapOf(dist, prev, settled), kind: "init", line: 1,
+    title: "Todo en infinito, menos el tanque",
+    text: nameOf(START) + " queda a 0 m. Los demás puntos todavía no tienen camino, así que su marca es infinito." });
+
+  while (pq.length) {
+    pq.sort((a, b) => a.d - b.d || a.id.localeCompare(b.id));
+    const item = pq.shift();
+    if (settled.has(item.id) || item.d !== dist[item.id]) continue;
+    settled.add(item.id);
+    const rival = frontierFrom(dist, settled)[0];
+    let text;
+    if (item.id === END) text = nameOf(END) + " es el pendiente más cercano, a " + mts(dist[END]) + ". Con longitudes que no restan, esa marca ya es la menor longitud de tubería.";
+    else if (item.id === START) text = "El tanque es el punto más cercano a sí mismo. Lo confirmo y empiezo a probar sus tubos.";
+    else if (rival) text = nameOf(item.id) + " es el pendiente más cercano, a " + mts(dist[item.id]) + ". " + nameOf(rival.id) + " espera, a " + mts(rival.d) + ".";
+    else text = nameOf(item.id) + " era el último pendiente. Su distancia " + mts(dist[item.id]) + " queda fija.";
+    steps.push({ ...snapOf(dist, prev, settled), kind: "settle", line: 4, current: item.id, title: "Confirmo " + nameOf(item.id), text });
+    if (item.id === END) break;
+
+    ADJ[item.id].forEach((e) => {
+      if (settled.has(e.to)) return;
+      const before = dist[e.to];
+      const alt = dist[item.id] + e.w;
+      const improved = alt < before;
+      const trap = TRAP_BY_KEY[edgeKey(item.id, e.to)];
+      const oldFrom = prev[e.to];
+      if (improved) { dist[e.to] = alt; prev[e.to] = item.id; pq.push({ id: e.to, d: alt }); }
+      const sum = mts(dist[item.id]) + " + " + mts(e.w) + " = " + mts(alt);
+      let rtext;
+      if (improved && !isFinite(before)) {
+        rtext = nameOf(e.to) + " no tenía camino. Por " + nameOf(item.id) + ": " + sum + ".";
+        if (trap) rtext += " Es el tubo directo de " + mts(e.w) + ". Por ahora es la única marca; todavía no se sabe que hay un rodeo más corto.";
+      } else if (improved) {
+        rtext = nameOf(e.to) + " baja de " + mts(before) + " a " + mts(alt) + " (" + sum + "). El anterior ahora es " + nameOf(item.id) + ".";
+        if (oldFrom && TRAP_BY_KEY[edgeKey(oldFrom, e.to)]) rtext += " El tubo directo de " + nameOf(oldFrom) + " (" + mts(before - dist[oldFrom] + 0) + ") ya no conviene: este rodeo es " + mts(before - alt) + " más corto.";
+      } else {
+        rtext = "El tubo " + nameOf(item.id) + " – " + nameOf(e.to) + " (" + mts(e.w) + ") no mejora: " + sum + ", y " + nameOf(e.to) + " ya está a " + mts(before) + ". Se descarta.";
+        if (trap) rtext += " Es un tubo directo que no conviene: de " + nameOf(trap.a) + " a " + nameOf(trap.b) + " el rodeo por " + trap.via.slice(1, -1).map(nameOf).join(" y ") + " suma " + mts(trap.alt) + ", menos que los " + mts(trap.w) + " del tubo directo.";
+      }
+      if (improved && e.to === END) rtext += " Ya hay una marca en la escuela, pero todavía no está confirmada: otro pendiente más cercano podría mejorarla.";
+      steps.push({ ...snapOf(dist, prev, settled), kind: "relax", line: 7, current: item.id,
+        focus: { from: item.id, to: e.to, improved }, trap: !!trap && !improved,
+        title: improved ? "Mejora " + nameOf(e.to) : "Descarto el tubo a " + nameOf(e.to), text: rtext });
+    });
+  }
+
+  const finalPath = pathFrom(prev, END, START);
+  const off = steps.find((s) => s.kind === "settle" && s.current !== START && s.current !== END && finalPath.indexOf(s.current) === -1);
+  if (off) off.text += " Este punto no quedará en la ruta: está más cerca del tanque que la escuela. Dijkstra llena ese radio; no avanza apuntando al destino.";
+  const snap = snapOf(dist, prev, settled);
+  steps.push({ ...snap, kind: "done", line: 5, current: END, title: "Toca reconstruir",
+    text: "La escuela ya es definitiva. La ruta se arma saltando al anterior de cada punto, desde " + nameOf(END) + " hasta " + nameOf(START) + "." });
+  finalPath.forEach((node, k) => {
+    if (k === 0) return;
+    steps.push({ ...snap, kind: "trace", line: 5, current: node, path: finalPath.slice(0, k + 1),
+      title: nameOf(finalPath[k - 1]) + " → " + nameOf(node),
+      text: "El anterior de " + nameOf(node) + " es " + nameOf(finalPath[k - 1]) + ". Ese tubo entra en la ruta. Hasta aquí van " + mts(dist[node]) + "." });
+  });
+  steps.push({ ...snap, kind: "summary", line: 5, path: finalPath,
+    title: "Menor longitud: " + mts(dist[END]),
+    text: finalPath.map(nameOf).join(" → ") + ". " + mts(dist[END]) + " en " + tubos(finalPath.length - 1) + "." });
+  return steps;
+}
+
+/* ---------- Dibujo de la red ---------- */
+function drawNet(svg, step, mode) {
+  const st = step || { dist: {}, prev: {}, settled: [], frontier: [], current: null, focus: null, path: null };
+  const settled = new Set(st.settled || []);
+  const front = new Map((st.frontier || []).map((f) => [f.id, f.d]));
+  const tree = new Set();
+  Object.keys(st.prev || {}).forEach((id) => { if (st.prev[id]) tree.add(edgeKey(st.prev[id], id)); });
+  const thick = new Set();
+  (st.path || []).forEach((id, i) => { if (i > 0) thick.add(edgeKey(st.path[i - 1], id)); });
+  const parts = [];
+  parts.push(`<rect width="1020" height="540" fill="#eaf2ea"/>`);
+  parts.push(`<ellipse cx="160" cy="470" rx="150" ry="46" fill="#dbe9d3"/>`);
+  parts.push(`<ellipse cx="640" cy="40" rx="190" ry="40" fill="#dbe9d3"/>`);
+  parts.push(`<ellipse cx="880" cy="470" rx="120" ry="40" fill="#e2eddb"/>`);
+  parts.push(`<path d="M0 220 C80 200 150 245 210 225" fill="none" stroke="#b9d6e6" stroke-width="10" stroke-linecap="round" opacity=".7"/>`);
+  parts.push(`<text x="18" y="520" font-size="12" fill="#55626d">Cada número sobre un tubo son metros de tubería. El largo del trazo no es la distancia.</text>`);
+
+  EDGES.forEach(([a, b, w]) => {
+    const pa = PLACE[a], pb = PLACE[b];
+    parts.push(`<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="#a9bcc6" stroke-width="9" stroke-linecap="round"/>`);
+    parts.push(`<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="#e8f1f5" stroke-width="5" stroke-linecap="round"/>`);
+  });
+  const chain = (keys, color, width) => keys.forEach((key) => {
+    const [a, b] = key.split("|");
+    const pa = PLACE[a], pb = PLACE[b];
+    parts.push(`<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`);
+  });
+  chain([...tree], "#1a56db", 4);
+  if (thick.size) { chain([...thick], "#174ea6", 12); chain([...thick], "#1a73e8", 7); }
+  if (st.focus) {
+    const pa = PLACE[st.focus.from], pb = PLACE[st.focus.to];
+    const color = st.focus.improved ? "#188038" : "#d93025";
+    parts.push(`<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="${color}" stroke-width="7" stroke-linecap="round"${st.focus.improved ? "" : ` stroke-dasharray="6 6"`}/>`);
+  }
+  /* longitudes sobre cada tubo */
+  EDGES.forEach(([a, b, w]) => {
+    const pa = PLACE[a], pb = PLACE[b];
+    const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+    const isFocus = st.focus && edgeKey(st.focus.from, st.focus.to) === edgeKey(a, b);
+    const stroke = isFocus ? (st.focus.improved ? "#188038" : "#d93025") : "#9db3be";
+    parts.push(`<rect x="${mx - 20}" y="${my - 11}" width="40" height="22" rx="7" fill="#ffffff" stroke="${stroke}" stroke-width="${isFocus ? 2.4 : 1}"/>`);
+    parts.push(`<text x="${mx}" y="${my + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="#17222b">${w}</text>`);
+  });
+  PLACES.forEach((p) => {
+    const showMarks = mode !== "static";
+    const current = st.current === p.id;
+    const isSettled = settled.has(p.id);
+    const isFront = front.has(p.id);
+    let fill = "#ffffff", ink = "#17222b", stroke = "#55626d";
+    if (showMarks && isFront) { fill = "#f6e2a8"; stroke = "#b5810b"; }
+    if (showMarks && isSettled) { fill = "#1e3a5f"; ink = "#ffffff"; stroke = "#1e3a5f"; }
+    if (showMarks && current) { fill = "#c2410c"; ink = "#ffffff"; stroke = "#9a3412"; }
+    let value = "";
+    if (showMarks) {
+      const m = st.dist ? st.dist[p.id] : undefined;
+      value = (m == null || !isFinite(m)) ? "∞" : String(Math.round(m));
+    } else {
+      value = p.id;
+    }
+    if (current) parts.push(`<circle class="pulse" cx="${p.x}" cy="${p.y}" r="20" fill="transparent" stroke="#c2410c" stroke-width="2"/>`);
+    if (p.id === START) parts.push(`<circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="#188038" stroke-width="3.5"/>`);
+    if (p.id === END) parts.push(`<circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="#d93025" stroke-width="3.5"/>`);
+    parts.push(`<circle cx="${p.x}" cy="${p.y}" r="22" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`);
+    parts.push(`<text x="${p.x}" y="${p.y + 4.5}" text-anchor="middle" font-size="${value.length > 3 ? 11 : 13}" font-weight="700" fill="${ink}">${value}</text>`);
+    parts.push(`<text x="${p.x + p.lab[0]}" y="${p.y + p.lab[1]}" text-anchor="${p.lab[2]}" font-size="14" font-weight="650" fill="#17222b" stroke="#ffffff" stroke-width="4" paint-order="stroke">${esc(p.name)}</text>`);
+  });
+  svg.innerHTML = parts.join("");
+}
+
+/* ---------- Panel del laboratorio ---------- */
+function fillCode(ol) {
+  ol.innerHTML = CODE.map((line, i) => `<li data-line="${i + 1}"><code>${esc(line)}</code></li>`).join("");
+}
+function markCode(ol, line) {
+  ol.querySelectorAll("li").forEach((li) => li.classList.toggle("on", Number(li.dataset.line) === line));
+}
+function renderLab(step) {
+  const root = document.getElementById("lab");
+  root.querySelector("[data-step-title]").textContent = step.title;
+  root.querySelector("[data-step-text]").textContent = step.text;
+  const m = step.dist[END];
+  const confirmed = step.settled.indexOf(END) !== -1;
+  root.querySelector("[data-stat]").innerHTML = !isFinite(m)
+    ? "∞<small>la escuela todavía no tiene camino</small>"
+    : esc(mts(m)) + `<small>${confirmed ? "confirmados hasta la escuela" : "mejor marca de la escuela, aún puede bajar"}</small>`;
+  root.querySelector("[data-route]").textContent = step.path && step.path.length ? step.path.map(nameOf).join(" → ") : "";
+  const fr = root.querySelector("[data-front]");
+  fr.innerHTML = step.frontier.length
+    ? step.frontier.map((f, i) => `<div class="fr${i === 0 ? " next" : ""}"><span>${esc(nameOf(f.id))}</span><b>${esc(mts(f.d))}</b></div>`).join("")
+    : `<p class="fine">Vacía</p>`;
+  markCode(root.querySelector("[data-code]"), step.line);
+  drawNet(document.getElementById("svg-lab"), step, "lab");
+}
+
+/* ---------- Reproductor ---------- */
+function mountPlayer(root, build, render) {
+  let steps = [], index = 0, timer = null;
+  const range = root.querySelector("[data-range]");
+  const count = root.querySelector("[data-count]");
+  const playBtn = root.querySelector("[data-play]");
+  function stop() { if (timer) clearInterval(timer); timer = null; playBtn.textContent = "Reproducir"; }
+  function show(n) {
+    if (!steps.length) return;
+    index = Math.max(0, Math.min(steps.length - 1, n));
+    range.max = String(steps.length - 1);
+    range.value = String(index);
+    count.textContent = (index + 1) + " / " + steps.length;
+    render(steps[index]);
+  }
+  function rebuild() { stop(); steps = build(); show(0); }
+  root.querySelector("[data-prev]").addEventListener("click", () => { stop(); show(index - 1); });
+  root.querySelector("[data-next]").addEventListener("click", () => { stop(); show(index + 1); });
+  root.querySelector("[data-first]").addEventListener("click", () => { stop(); show(0); });
+  root.querySelector("[data-last]").addEventListener("click", () => { stop(); show(steps.length - 1); });
+  root.querySelector("[data-mark]").addEventListener("click", () => {
+    stop();
+    const kinds = new Set(["settle", "done", "trace", "summary"]);
+    let next = index + 1;
+    while (next < steps.length && !kinds.has(steps[next].kind)) next += 1;
+    show(Math.min(next, steps.length - 1));
+  });
+  root.querySelector("[data-trap]").addEventListener("click", () => {
+    stop();
+    let hit = steps.findIndex((s, i) => i > index && s.trap);
+    if (hit === -1) hit = steps.findIndex((s) => s.trap);
+    if (hit !== -1) show(hit);
+  });
+  playBtn.addEventListener("click", () => {
+    if (timer) { stop(); return; }
+    if (index >= steps.length - 1) show(0);
+    playBtn.textContent = "Pausa";
+    timer = setInterval(() => { if (index >= steps.length - 1) { stop(); return; } show(index + 1); }, 1000);
+  });
+  range.addEventListener("input", () => { stop(); show(Number(range.value)); });
+  return { rebuild, stop, step(d) { stop(); show(index + d); }, toggle() { playBtn.click(); } };
+}
+
+/* ---------- Diapositivas ---------- */
+const players = {};
+let slideIndex = 0;
+let slides = [];
+function currentPlayer() {
+  const name = slides[slideIndex] && slides[slideIndex].dataset.player;
+  return name ? players[name] : null;
+}
+function goSlide(n) {
+  Object.keys(players).forEach((k) => players[k].stop());
+  slideIndex = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle("active", i === slideIndex));
+  document.getElementById("slideName").textContent = slides[slideIndex].dataset.title || "";
+  document.getElementById("pos").textContent = (slideIndex + 1) + " / " + slides.length;
+  document.getElementById("meter-bar").style.width = ((slideIndex + 1) / slides.length * 100) + "%";
+  document.getElementById("prev").disabled = slideIndex === 0;
+  document.getElementById("next").disabled = slideIndex === slides.length - 1;
+}
+
+function fillStatic() {
+  /* lista de adyacencia: sale de los mismos datos que el dibujo */
+  document.getElementById("adj-list").innerHTML = PLACES.map((p) =>
+    `<li><b>${esc(p.name)}</b>: ` + ADJ[p.id].map((e) => `<span>${esc(nameOf(e.to))} (${e.w})</span>`).join(", ") + `</li>`
+  ).join("");
+
+  /* tubos que no convienen */
+  document.getElementById("trap-cards").innerHTML = TRAPS.map((t, i) =>
+    `<article class="card warn"${i ? ' style="margin-top:12px"' : ""}><h3>Tubo directo ${i + 1}: ${esc(nameOf(t.a))} – ${esc(nameOf(t.b))}</h3>` +
+    `<p>Mide <b>${mts(t.w)}</b>. El rodeo ${esc(t.via.map(nameOf).join(" → "))} suma <b>${mts(t.alt)}</b>: ${mts(t.w - t.alt)} menos con ${tubos(t.via.length - 1)}.</p>` +
+    `<p class="fine">Menos tubos no siempre es menos metros. Aquí el tubo directo es el más largo.</p></article>`
+  ).join("");
+
+  /* respuesta */
+  const res = silentDijkstra(START, END);
+  const route = res.path;
+  const parts = [];
+  for (let i = 1; i < route.length; i++) parts.push(ADJ[route[i - 1]].find((e) => e.to === route[i]).w);
+  document.getElementById("ans-short").textContent = mts(res.meters);
+  document.getElementById("ans-big").innerHTML = `${res.meters}<small>metros de tubería · ${tubos(route.length - 1)}</small>`;
+  document.getElementById("ans-route").textContent = route.map(nameOf).join(" → ");
+  document.getElementById("ans-parts").textContent = parts.join(" + ") + " = " + res.meters + " m";
+
+  const steps = dijkstraSteps();
+  const trapStep = steps.find((s) => s.trap);
+  document.getElementById("ans-trap").textContent = trapStep ? trapStep.text : "";
+  const offStep = steps.find((s) => s.kind === "settle" && s.current !== START && s.current !== END && route.indexOf(s.current) === -1);
+  document.getElementById("ans-off").textContent = offStep
+    ? nameOf(offStep.current) + " se confirmó a " + mts(offStep.dist[offStep.current]) + ", antes que la escuela (" + mts(res.meters) + "), y no está en la ruta final. Dijkstra crece por distancia al tanque, no apuntando al destino."
+    : "";
+  drawNet(document.getElementById("svg-answer"), steps[steps.length - 1], "lab");
+
+  /* cierre */
+  const bfs = silentBfs(START, END);
+  document.getElementById("qa-bfs").textContent =
+    "BFS cuenta tubos. Iría por " + bfs.path.map(nameOf).join(" → ") + ": " + tubos(bfs.hops) + ", pero " + bfs.meters + " m de tubería. La ruta de Dijkstra usa " +
+    tubos(route.length - 1) + " y solo " + res.meters + " m. Para esta pregunta, " + (bfs.meters - res.meters) + " m de diferencia son tubería de más.";
+  const o = offStep;
+  document.getElementById("qa-off").textContent = o
+    ? nameOf(o.current) + " está a " + mts(o.dist[o.current]) + " del tanque y la escuela a " + mts(res.meters) + ". Dijkstra crece como una mancha por distancia al origen, no en dirección al destino, así que todo lo que está más cerca que la escuela se confirma antes."
+    : "";
+  const tr2 = TRAPS.find((t) => t.w === 600) || TRAPS[TRAPS.length - 1];
+  document.getElementById("qa-trap").textContent = tr2
+    ? "Porque cuando Válvula Camino se confirmó (a 460 m), Cancha ya tenía una marca de 610 m por Lavadero. Probar el tubo directo daba 460 + " + tr2.w + " = " + (460 + tr2.w) + " m, que no mejora los 610 m. Además, el rodeo por la Escuela suma " + tr2.alt + " m: el tubo de " + tr2.w + " m no conviene ni siquiera como alternativa."
+    : "";
+
+  /* Python con el mismo grafo */
+  const dict = PLACES.map((p) => `    "${p.id}": [` + ADJ[p.id].map((e) => `("${e.to}", ${e.w})`).join(", ") + `],`).join("\n");
+  document.getElementById("py-code").textContent =
+`import heapq
+
+# (vecino, metros de tubería)
+grafo = {
+${dict}
+}
+
+def dijkstra(grafo, origen):
+    dist = {origen: 0}
+    previo = {origen: None}
+    cola = [(0, origen)]
+    while cola:
+        d, u = heapq.heappop(cola)
+        if d != dist.get(u):
+            continue
+        for v, metros in grafo[u]:
+            nd = d + metros
+            if nd < dist.get(v, float("inf")):
+                dist[v] = nd
+                previo[v] = u
+                heapq.heappush(cola, (nd, v))
+    return dist, previo
+
+dist, previo = dijkstra(grafo, "TQ")
+ruta, nodo = [], "ES"
+while nodo is not None:
+    ruta.append(nodo)
+    nodo = previo[nodo]
+print(" -> ".join(reversed(ruta)), dist["ES"], "m")
+# ${route.join(" -> ")} ${res.meters} m`;
+}
+
+function init() {
+  slides = [...document.querySelectorAll(".slide")];
+  fillCode(document.querySelector("#lab [data-code]"));
+  fillStatic();
+  drawNet(document.getElementById("svg-intro"), null, "static");
+  drawNet(document.getElementById("svg-graph"), null, "static");
+  players.dij = mountPlayer(document.getElementById("lab"), dijkstraSteps, renderLab);
+  players.dij.rebuild();
+
+  document.getElementById("prev").addEventListener("click", () => goSlide(slideIndex - 1));
+  document.getElementById("next").addEventListener("click", () => goSlide(slideIndex + 1));
+  document.getElementById("start-btn").addEventListener("click", () => goSlide(1));
+  document.querySelectorAll(".qa").forEach((btn) => btn.addEventListener("click", () => btn.nextElementSibling.classList.toggle("show")));
+  document.addEventListener("keydown", (event) => {
+    if (event.target.matches("input, textarea")) return;
+    const player = currentPlayer();
+    if (event.key === "ArrowRight" || event.key === "PageDown") { event.preventDefault(); goSlide(slideIndex + 1); }
+    else if (event.key === "ArrowLeft" || event.key === "PageUp") { event.preventDefault(); goSlide(slideIndex - 1); }
+    else if (event.key === "Home") goSlide(0);
+    else if (event.key === "End") goSlide(slides.length - 1);
+    else if ((event.key === "n" || event.key === "N") && player) { event.preventDefault(); player.step(1); }
+    else if ((event.key === "p" || event.key === "P") && player) { event.preventDefault(); player.step(-1); }
+    else if (event.key === " " && player && !event.target.closest("button")) { event.preventDefault(); player.toggle(); }
+  });
+  const fromHash = Number(String(location.hash || "").replace("#", ""));
+  goSlide(Number.isInteger(fromHash) && fromHash >= 1 && fromHash <= slides.length ? fromHash - 1 : 0);
+}
+if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
