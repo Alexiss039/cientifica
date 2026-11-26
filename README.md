@@ -42,6 +42,13 @@ Dijkstra sobre la red de un acueducto veredal inventado: menor longitud de tuber
 | Entregable, un solo HTML (abrir con doble clic) | [taller-grafos/index.html](taller-grafos/index.html) |
 | README con el grafo y la respuesta | [taller-grafos/README.md](taller-grafos/README.md) |
 
+## Quinto parcial
+
+Diapositivas que explican el notebook de la Tarea 2: reparación de los datos, gráficos y modelo de predicción.
+
+- Diapositivas: `quinto_parcial/index.html` ([abrir](quinto_parcial/index.html); descargar el repositorio y abrir con doble clic)
+- Notebook que se explica: [tarea2/analisis-nacimientos/tarea2-analisis.ipynb](tarea2/analisis-nacimientos/tarea2-analisis.ipynb)
+
 ## Estructura
 
 ```text
@@ -51,5 +58,6 @@ Dijkstra sobre la red de un acueducto veredal inventado: menor longitud de tuber
 ├── notebooks/               notebooks del taller de modelos
 ├── tarea1/                  greedy en LeetCode
 ├── tarea2/                  análisis en Colab
-└── taller-grafos/           problema 4.7 con Dijkstra
+├── taller-grafos/           problema 4.7 con Dijkstra
+└── quinto_parcial/          diapositivas sobre la Tarea 2
 ```

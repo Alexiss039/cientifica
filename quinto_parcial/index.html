@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quinto parcial · Reparación, gráficos y modelo</title>
+<style>
+  :root {
+    --ink: #1b1f27; --muted: #586070; --line: #dde1e8; --paper: #f4f5f8; --card: #ffffff;
+    --accent: #a3263a; --blue: #1a56db; --green: #0f6e68; --gold: #a16207;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: "Segoe UI", "Helvetica Neue", sans-serif; color: var(--ink); background: var(--paper); overflow: hidden; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: .92em; }
+  .app { height: 100%; display: grid; grid-template-rows: 44px minmax(0, 1fr) 52px; }
+  header, footer { display: flex; align-items: center; gap: 14px; padding: 0 18px; background: var(--card); }
+  header { border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  header b { color: var(--ink); }
+  #section { margin-left: auto; text-transform: uppercase; letter-spacing: .1em; font-size: 12px; color: var(--accent); }
+  footer { border-top: 1px solid var(--line); }
+  footer button { border: 1px solid #cfd4dd; background: var(--card); border-radius: 999px; padding: 6px 16px; }
+  footer button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .meter { flex: 1; height: 4px; background: #e3e6ec; border-radius: 99px; overflow: hidden; }
+  #bar { height: 100%; width: 0; background: var(--accent); }
+  #pos { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 64px; text-align: center; }
+  .slide { display: none; height: 100%; overflow: auto; }
+  .slide.active { display: block; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 28px 28px; }
+  h1, h2, h3 { font-family: Georgia, "Palatino Linotype", serif; font-weight: 500; letter-spacing: -.01em; }
+  h1 { font-size: clamp(38px, 5.2vw, 62px); line-height: 1.04; margin: 0 0 16px; }
+  h2 { font-size: clamp(25px, 2.8vw, 34px); line-height: 1.15; margin: 0 0 14px; }
+  h3 { font-size: 19px; margin: 0 0 6px; }
+  p, li { font-size: 17px; line-height: 1.45; }
+  p { margin: 0 0 10px; }
+  ul { margin: 0 0 10px; padding-left: 20px; }
+  .lede { font-size: 21px; max-width: 70ch; }
+  .fine { font-size: 13px; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+  .fig { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(250px, 1fr); gap: 18px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  .card.read { box-shadow: inset 4px 0 0 var(--blue); }
+  .card.limit { box-shadow: inset 4px 0 0 var(--gold); }
+  .card.key { box-shadow: inset 4px 0 0 var(--accent); }
+  .card.ok { box-shadow: inset 4px 0 0 var(--green); }
+  .stack > * + * { margin-top: 12px; }
+  .num { display: block; font-family: Georgia, serif; font-variant-numeric: lining-nums; font-size: 40px; line-height: 1.05; color: var(--accent); }
+  img.plot { display: block; width: 100%; max-height: calc(100vh - 205px); object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 6px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); font-size: 14.5px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #eceef3; font-weight: 650; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.mark td { background: #fdf1d8; }
+  table.tight td, table.tight th { padding: 4px 9px; font-size: 13.5px; }
+  pre { background: #171b24; color: #eef1f7; border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.5; overflow: auto; margin: 0 0 12px; }
+  .pill { display: inline-block; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 12px; font-size: 14px; margin: 0 6px 6px 0; }
+  .cover { min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  @media (max-width: 900px) { .grid2, .grid3, .fig { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><b>Quinto parcial</b> · Programación científica · Nacimientos en el Hospital General de Medellín</div>
+    <div id="section"></div>
+  </header>
+  <main>
+
+    <!-- 1 -->
+    <section class="slide active" data-section="Pregunta">
+      <div class="wrap cover">
+        <h1>¿Se puede anticipar<br>si un parto termina en cesárea?</h1>
+        <p class="lede">Reparación de los datos, gráficos y modelo de predicción del notebook de la Tarea 2.</p>
+        <p>
+          <span class="pill">Fuente: datos.gov.co (conjunto kjs7-2ryw)</span>
+          <span class="pill">22 234 filas · 32 columnas</span>
+          <span class="pill">Enero 2022 – septiembre 2026</span>
+          <span class="pill">Un registro = un nacimiento</span>
+        </p>
+        <p class="fine">Flechas ← → para cambiar de diapositiva.</p>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" data-section="1 · Reparación">
+      <div class="wrap">
+        <h2>Reparación 1 · ¿Cómo entró el archivo?</h2>
+        <div class="grid2">
+          <div>
+            <pre>URL = "https://www.datos.gov.co/resource/kjs7-2ryw.csv?$limit=50000"
+
+crudo = pd.read_csv(
+    URL,
+    sep=",",
+    encoding="utf-8",
+    na_values=["", "NA", "N/A"],
+)</pre>
+            <p>Se lee directo de la API pública, sin rutas locales. El límite se sube a 50 000 para traer todas las filas.</p>
+          </div>
+          <div class="stack">
+            <div class="card key"><span class="num">22 234 × 32</span><p>filas y columnas después de leer.</p></div>
+            <div class="card">
+              <h3>Qué se trató como faltante</h3>
+              <ul>
+                <li>Al leer: vacío, <code>NA</code> y <code>N/A</code>.</li>
+                <li>En la limpieza: el texto <code>SIN INFORMACION</code> (con o sin tilde). Son <b>287 celdas</b>: 127 en nivel educativo del padre, 83 en estado conyugal y 77 en nivel educativo de la madre.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide" data-section="1 · Reparación">
+      <div class="wrap">
+        <h2>Reparación 2 · ¿Qué se parseó y qué huecos nacieron?</h2>
+        <div class="grid3">
+          <div class="card ok">
+            <h3>Fecha</h3>
+            <p><code>fecha_nacimiento</code>, de texto ISO a fecha con <code>errors="coerce"</code>.</p>
+            <span class="num">0</span><p>huecos nuevos. Rango: 2022-01-01 a 2026-09-30.</p>
+          </div>
+          <div class="card ok">
+            <h3>Números</h3>
+            <p>13 columnas con <code>pd.to_numeric(errors="coerce")</code>: peso, talla, gestación, edades, consultas, Apgar, embarazos, hijos y otras.</p>
+            <span class="num">0</span><p>huecos nuevos por el parseo.</p>
+          </div>
+          <div class="card key">
+            <h3>Categorías</h3>
+            <p>Aquí estaba la suciedad: tildes distintas y redacción que cambió entre periodos.</p>
+            <span class="num">287</span><p>huecos que nacen al limpiar texto: eran <code>SIN INFORMACION</code>.</p>
+          </div>
+        </div>
+        <br>
+        <table>
+          <tr><th>Columna</th><th>Problema</th><th class="n">Categorías antes</th><th class="n">Después</th></tr>
+          <tr><td><code>tipo_parto</code></td><td><code>CESAREA</code> y <code>CESÁREA</code> contaban como dos</td><td class="n">5</td><td class="n">3</td></tr>
+          <tr><td><code>estado_conyugal_madre</code></td><td>tildes y «ESTA SOLTERA» frente a «ESTABA SOLTERO(A)»</td><td class="n">17</td><td class="n">6</td></tr>
+          <tr><td><code>nivel_educativo_madre</code></td><td>con y sin tilde</td><td class="n">23</td><td class="n">14</td></tr>
+          <tr><td><code>municipio_residencia</code></td><td>con y sin tilde</td><td class="n">295</td><td class="n">229</td></tr>
+        </table>
+        <p class="fine" style="margin-top:8px">Regla general: quitar tildes, pasar a mayúsculas y colapsar espacios en todas las columnas de texto. El estado conyugal además se mapea a categorías comparables.</p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" data-section="1 · Reparación">
+      <div class="wrap">
+        <h2>Reparación 3 · ¿Qué se auditó?</h2>
+        <div class="grid3">
+          <div class="card">
+            <h3>Faltantes (después de limpiar)</h3>
+            <table class="tight">
+              <tr><th>Columna</th><th class="n">n</th><th class="n">%</th></tr>
+              <tr><td>localidad</td><td class="n">5 683</td><td class="n">25,6</td></tr>
+              <tr><td>nombre_administradora</td><td class="n">2 743</td><td class="n">12,3</td></tr>
+              <tr><td>nivel_educativo_padre</td><td class="n">2 611</td><td class="n">11,7</td></tr>
+              <tr><td>edad_padre</td><td class="n">819</td><td class="n">3,7</td></tr>
+              <tr><td>ultimo_ano_aprobado_madre</td><td class="n">411</td><td class="n">1,8</td></tr>
+              <tr><td>estado_conyugal_madre</td><td class="n">277</td><td class="n">1,2</td></tr>
+              <tr><td>nivel_educativo_madre</td><td class="n">274</td><td class="n">1,2</td></tr>
+              <tr><td>factor_rh / grupo_sanguineo</td><td class="n">133 / 126</td><td class="n">0,6</td></tr>
+              <tr><td>apgar1 y apgar2</td><td class="n">47</td><td class="n">0,2</td></tr>
+              <tr><td>gestación</td><td class="n">9</td><td class="n">&lt;0,1</td></tr>
+              <tr><td>área, municipio, departamento</td><td class="n">5</td><td class="n">&lt;0,1</td></tr>
+            </table>
+          </div>
+          <div class="stack">
+            <div class="card ok"><h3>Duplicados</h3><span class="num">0</span><p>duplicados exactos. No hay identificador del nacimiento, así que no se borran filas por «parecerse».</p></div>
+            <div class="card"><h3>Un hueco estructural</h3><p><code>localidad</code> falta en <b>5,3 %</b> de los residentes de Medellín y en <b>51,2 %</b> de quienes viven fuera.</p></div>
+          </div>
+          <div class="card key">
+            <h3>Imposibles y sospechosos</h3>
+            <ul>
+              <li><b>3</b> edades de padre &gt; 80 (94, 99 y 100): <b>pasan a faltante</b>.</li>
+              <li><b>133</b> casos (0,6 %) de embarazo simple con más hijos vivos que embarazos: <b>se marcan</b>, no se borran.</li>
+              <li><b>191</b> madres de 12 a 14 años: <b>se dejan</b>, son casos reales.</li>
+              <li><b>115</b> partos antes de 28 semanas y <b>142</b> pesos menores de 1000 g: <b>se dejan</b>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-section="1 · Reparación">
+      <div class="wrap">
+        <h2>Reparación 4 · ¿Qué se decidió, variable por variable?</h2>
+        <table class="tight">
+          <tr><th>Variable</th><th>Decisión</th><th>Por qué</th></tr>
+          <tr><td><code>localidad</code></td><td>Dejar el hueco; no entra al modelo</td><td>Hueco estructural: imputar inventaría localidades</td></tr>
+          <tr><td><code>nombre_administradora</code></td><td>Dejar el hueco; no entra</td><td><code>regimen_seguridad</code> ya cubre la idea</td></tr>
+          <tr class="mark"><td><code>nivel_educativo_padre</code></td><td>Imputar con la moda (en el Pipeline)</td><td>Variable útil con 11,7 % de huecos; deforma la distribución (diapositiva siguiente)</td></tr>
+          <tr><td><code>edad_padre</code></td><td>Valores &gt; 80 a faltante; imputar con la mediana</td><td>Pocos huecos; la mediana resiste extremos</td></tr>
+          <tr><td><code>ultimo_ano_aprobado_madre</code></td><td>Imputar con la mediana</td><td>1,8 % de huecos</td></tr>
+          <tr><td><code>estado_conyugal_madre</code>, <code>nivel_educativo_madre</code></td><td>Imputar con la moda</td><td>1,2 % de huecos; columnas útiles</td></tr>
+          <tr><td><code>tiempo_de_gestacion</code></td><td>Imputar con la mediana</td><td>Solo 9 filas</td></tr>
+          <tr><td><code>area_residencia</code>, <code>municipio_residencia</code></td><td>Imputar con la moda</td><td>Solo 5 filas cada una</td></tr>
+          <tr><td><code>departamento_residencia</code>, <code>factor_rh</code>, <code>grupo_sanguineo</code></td><td>Dejar el hueco; no entran</td><td>Redundantes o sin relación esperada con el problema</td></tr>
+          <tr><td><code>apgar1</code>, <code>apgar2</code></td><td>Dejar el hueco; no entran</td><td>Se miden después del parto</td></tr>
+          <tr><td>Filas</td><td>No se elimina ninguna</td><td>Los atípicos son parte del fenómeno</td></tr>
+        </table>
+        <p class="fine" style="margin-top:8px">La mediana y la moda se calculan solo con el entrenamiento (2022–2024), dentro del <code>Pipeline</code>, para que la prueba no se filtre.</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-section="1 · Reparación">
+      <div class="wrap">
+        <h2>Reparación 5 · ¿Qué le hizo la imputación a la distribución?</h2>
+        <h3>Numéricas: mediana del entrenamiento</h3>
+        <table>
+          <tr><th>Variable</th><th class="n">Imputados</th><th class="n">Valor</th><th class="n">Media antes → después</th><th class="n">Desv. antes → después</th><th class="n">Cambio desv.</th></tr>
+          <tr><td><code>edad_padre</code></td><td class="n">819</td><td class="n">28</td><td class="n">29,59 → 29,53</td><td class="n">7,82 → 7,68</td><td class="n">−1,8 %</td></tr>
+          <tr><td><code>ultimo_ano_aprobado_madre</code></td><td class="n">411</td><td class="n">9</td><td class="n">7,70 → 7,73</td><td class="n">3,19 → 3,17</td><td class="n">−0,8 %</td></tr>
+          <tr><td><code>tiempo_de_gestacion</code></td><td class="n">9</td><td class="n">38</td><td class="n">37,79 → 37,79</td><td class="n">2,18 → 2,18</td><td class="n">≈ 0 %</td></tr>
+        </table>
+        <br>
+        <h3>Categóricas: moda del entrenamiento</h3>
+        <table>
+          <tr><th>Variable</th><th class="n">Imputados</th><th>Moda</th><th class="n">% de la moda antes → después</th></tr>
+          <tr class="mark"><td><code>nivel_educativo_padre</code></td><td class="n">2 611</td><td>Media académica o clásica</td><td class="n"><b>35,5 → 43,1</b></td></tr>
+          <tr><td><code>nivel_educativo_madre</code></td><td class="n">274</td><td>Media académica o clásica</td><td class="n">36,6 → 37,4</td></tr>
+          <tr><td><code>estado_conyugal_madre</code></td><td class="n">277</td><td>Unión libre ≥ 2 años</td><td class="n">48,3 → 48,9</td></tr>
+          <tr><td><code>area_residencia</code></td><td class="n">5</td><td>Cabecera municipal</td><td class="n">80,4 → 80,4</td></tr>
+          <tr><td><code>municipio_residencia</code></td><td class="n">5</td><td>Medellín</td><td class="n">55,9 → 55,9</td></tr>
+        </table>
+        <br>
+        <div class="card limit"><p><b>La que sí deforma:</b> rellenar con la moda el nivel educativo del padre infla esa categoría en 7,6 puntos. Cualquier lectura sobre esa variable debe tenerlo en cuenta. En las demás el efecto es pequeño.</p></div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide" data-section="2 · Gráficos">
+      <div class="wrap">
+        <h2>¿Ha subido la proporción de cesáreas entre 2022 y 2026?</h2>
+        <div class="fig">
+          <img class="plot" src="01-cesareas-por-trimestre.png" alt="Proporción de cesáreas por trimestre, 2022 a 2026">
+          <div class="stack">
+            <div class="card read"><h3>Lectura</h3><span class="num">28,5 % → 42,3 %</span><p>del primer trimestre de 2022 al tercero de 2026. La subida no es pareja: hay bajadas, como en 2025.</p></div>
+            <div class="card limit"><h3>Qué no se puede concluir</h3><p>No se sabe si cambió la práctica médica, el tipo de pacientes o la forma de registrar. Es un solo hospital y 2026 llega solo a septiembre.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide" data-section="2 · Gráficos">
+      <div class="wrap">
+        <h2>¿La edad de la madre se asocia con la probabilidad de cesárea?</h2>
+        <div class="fig">
+          <img class="plot" src="02-cesarea-por-edad-madre.png" alt="Porcentaje de cesáreas por grupo de edad de la madre">
+          <div class="stack">
+            <div class="card read"><h3>Lectura</h3><span class="num">21,6 % → 51,7 %</span><p>de menores de 18 años a 40 o más. La tasa sube en cada grupo de edad.</p></div>
+            <div class="card limit"><h3>Qué no se puede concluir</h3><p>Que la edad cause la cesárea. A mayor edad cambian también los antecedentes y riesgos clínicos, que no están en la base.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" data-section="2 · Gráficos">
+      <div class="wrap">
+        <h2>¿Los embarazos múltiples terminan más en cesárea?</h2>
+        <div class="fig">
+          <img class="plot" src="03-cesarea-embarazo-multiple.png" alt="Porcentaje de cesáreas en embarazos simples, dobles y triples">
+          <div class="stack">
+            <div class="card read"><h3>Lectura</h3><span class="num">33,2 % frente a 86,0 %</span><p>simples frente a dobles. En triples fue el 100 %.</p></div>
+            <div class="card limit"><h3>Qué no se puede concluir</h3><p>Los triples son solo 15 casos: ese 100 % no es una regla. Los múltiples son pocos (657 de 22 234), así que explican una parte pequeña del total.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide" data-section="2 · Gráficos">
+      <div class="wrap">
+        <h2>¿Cambia la tasa de cesárea según el régimen de seguridad social?</h2>
+        <div class="fig">
+          <img class="plot" src="04-cesarea-por-regimen.png" alt="Porcentaje de cesáreas por régimen de seguridad social">
+          <div class="stack">
+            <div class="card read"><h3>Lectura</h3><span class="num">33,2 % a 45,2 %</span><p>subsidiado frente a régimen de excepción. Solo se muestran grupos con 100 casos o más.</p></div>
+            <div class="card limit"><h3>Qué no se puede concluir</h3><p>Que el régimen cause la cesárea. Los grupos son muy desiguales (500 frente a 15 687) y pueden diferir en edad, riesgo o motivo de remisión.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" data-section="3 · Modelo">
+      <div class="wrap">
+        <h2>Modelo · ¿Qué es y, y qué entra en X?</h2>
+        <div class="card key"><p><b>y:</b> si el parto terminó en cesárea (1) o fue vaginal, espontáneo o instrumentado (0), tomado de <code>tipo_parto</code>.</p></div>
+        <br>
+        <div class="grid2">
+          <div class="card ok">
+            <h3>X: lo que entra</h3>
+            <p><b>Numéricas:</b> edad de la madre y del padre, semanas de gestación, consultas prenatales, número de embarazos, hijos nacidos vivos y último año aprobado por la madre.</p>
+            <p><b>Categóricas:</b> multiplicidad, estado conyugal, nivel educativo de madre y padre, régimen de seguridad, área y municipio de residencia.</p>
+          </div>
+          <div class="card limit">
+            <h3>Lo que quedó fuera</h3>
+            <table class="tight">
+              <tr><td>peso, talla, Apgar 1 y 2</td><td>no existen al momento de predecir</td></tr>
+              <tr><td>quién atendió el parto, certificador</td><td>describen el acto del parto</td></tr>
+              <tr><td><code>tipo_parto</code></td><td>es la respuesta</td></tr>
+              <tr><td>año, periodo, fecha</td><td>con split temporal obligarían a extrapolar</td></tr>
+              <tr><td>localidad, administradora, sangre, etnia, país, departamento</td><td>huecos estructurales, redundancia o casi constantes</td></tr>
+            </table>
+          </div>
+        </div>
+        <p class="fine" style="margin-top:10px">Advertencia: las semanas de gestación se registran al nacer. Una cesárea programada suele adelantar el parto, así que esa variable no es del todo independiente de la decisión.</p>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section class="slide" data-section="3 · Modelo">
+      <div class="wrap">
+        <h2>Modelo · ¿Cómo se separó y cuál es el baseline?</h2>
+        <div class="grid2">
+          <div>
+            <table>
+              <tr><th>Conjunto</th><th>Periodo</th><th class="n">Partos</th><th class="n">Cesárea</th></tr>
+              <tr><td>Entrenamiento</td><td>2022 – 2024</td><td class="n">13 897</td><td class="n">31,9 %</td></tr>
+              <tr><td>Prueba</td><td>2025 – sep. 2026</td><td class="n">8 337</td><td class="n">39,5 %</td></tr>
+            </table>
+            <br>
+            <p>Split <b>temporal</b>: se aprende del pasado y se prueba en el futuro. Un split aleatorio dejaría ver el mismo año a ambos lados.</p>
+            <p>Imputación, escalado y one-hot viven en un <code>Pipeline</code>. Los municipios con menos de 100 casos se agrupan como infrecuentes.</p>
+          </div>
+          <div class="card key">
+            <h3>Baseline: clase mayoritaria del entrenamiento</h3>
+            <p>Predice siempre <b>parto vaginal</b>.</p>
+            <span class="num">0,605</span><p>de exactitud en la prueba.</p>
+            <span class="num">0,00</span><p>de recall y F1 de cesárea: no detecta ninguna de las 3 297.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section class="slide" data-section="3 · Modelo">
+      <div class="wrap">
+        <h2>Modelo · ¿Le gana al baseline en la prueba?</h2>
+        <table>
+          <tr><th>Modelo</th><th class="n">Exactitud</th><th class="n">Precisión cesárea</th><th class="n">Recall cesárea</th><th class="n">F1 cesárea</th><th class="n">AUC</th></tr>
+          <tr><td>Baseline (siempre vaginal)</td><td class="n">0,605</td><td class="n">0,000</td><td class="n">0,000</td><td class="n">0,000</td><td class="n">0,500</td></tr>
+          <tr class="mark"><td><b>Regresión logística</b></td><td class="n">0,643</td><td class="n">0,705</td><td class="n">0,165</td><td class="n">0,268</td><td class="n">0,654</td></tr>
+          <tr><td>Bosque aleatorio</td><td class="n">0,635</td><td class="n">0,810</td><td class="n">0,102</td><td class="n">0,181</td><td class="n">0,657</td></tr>
+        </table>
+        <br>
+        <img class="plot" style="max-height: 34vh" src="05-matrices-de-confusion.png" alt="Matrices de confusión del baseline, la regresión logística y el bosque">
+        <br>
+        <div class="card read"><p><b>Sí gana, pero por poco.</b> La logística detecta 545 de 3 297 cesáreas, con 228 falsas alarmas. El bosque no la mejora en F1.</p></div>
+      </div>
+    </section>
+
+    <!-- 14 -->
+    <section class="slide" data-section="3 · Modelo">
+      <div class="wrap">
+        <h2>¿Qué variables empujan hacia cesárea o hacia parto vaginal?</h2>
+        <div class="fig">
+          <img class="plot" src="06-coeficientes-logistica.png" alt="Coeficientes más grandes de la regresión logística">
+          <div class="stack">
+            <div class="card read"><h3>Lectura</h3><p>El coeficiente más fuerte es embarazo simple (<b>−1,57</b>, hacia vaginal). Hacia cesárea pesan los múltiples (los triples, agrupados como infrecuentes, <b>1,25</b>; dobles <b>0,65</b>) y la edad de la madre (<b>0,45</b>).</p></div>
+            <div class="card">
+              <h3>El umbral cambia la lectura</h3>
+              <table class="tight">
+                <tr><th class="n">Umbral</th><th class="n">Precisión</th><th class="n">Recall</th><th class="n">F1</th></tr>
+                <tr class="mark"><td class="n">0,3</td><td class="n">0,500</td><td class="n">0,639</td><td class="n">0,561</td></tr>
+                <tr><td class="n">0,4</td><td class="n">0,616</td><td class="n">0,341</td><td class="n">0,439</td></tr>
+                <tr><td class="n">0,5</td><td class="n">0,705</td><td class="n">0,165</td><td class="n">0,268</td></tr>
+                <tr><td class="n">0,6</td><td class="n">0,846</td><td class="n">0,095</td><td class="n">0,170</td></tr>
+              </table>
+            </div>
+            <div class="card limit"><p>Un coeficiente no es una causa. El de Quibdó (0,63) se apoya en un grupo pequeño de pacientes.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 -->
+    <section class="slide" data-section="Cierre">
+      <div class="wrap">
+        <h2>¿Qué se puede concluir y qué no?</h2>
+        <div class="grid2">
+          <div class="card ok">
+            <h3>Sí se puede decir</h3>
+            <ul>
+              <li>El modelo supera al baseline: exactitud 0,643 frente a 0,605 y AUC 0,65 frente a 0,50.</li>
+              <li>Embarazo múltiple y mayor edad materna se asocian con más cesáreas.</li>
+              <li>La proporción de cesáreas subió en el periodo, y por eso el modelo entrenado con 31,9 % se queda corto cuando la prueba tiene 39,5 %.</li>
+            </ul>
+          </div>
+          <div class="card limit">
+            <h3>No se puede concluir</h3>
+            <ul>
+              <li>Que sirva para decidir o auditar un parto: faltan las indicaciones clínicas (cesárea previa, presentación fetal, sufrimiento fetal, preeclampsia).</li>
+              <li>Que valga para Antioquia o Colombia: es un solo hospital, de referencia.</li>
+              <li>Que el régimen o el municipio causen cesáreas.</li>
+              <li>Que 2026 marque una tendencia anual: está incompleto.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <footer>
+    <button type="button" id="prev">← Anterior</button>
+    <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+    <span id="pos">1 / 1</span>
+    <button type="button" class="primary" id="next">Siguiente →</button>
+  </footer>
+</div>
+<script>
+  const slides = [...document.querySelectorAll(".slide")];
+  let index = 0;
+  function go(n) {
+    index = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, i) => s.classList.toggle("active", i === index));
+    slides[index].scrollTop = 0;
+    document.getElementById("section").textContent = slides[index].dataset.section;
+    document.getElementById("pos").textContent = (index + 1) + " / " + slides.length;
+    document.getElementById("bar").style.width = ((index + 1) / slides.length * 100) + "%";
+    document.getElementById("prev").disabled = index === 0;
+    document.getElementById("next").disabled = index === slides.length - 1;
+  }
+  document.getElementById("prev").addEventListener("click", () => go(index - 1));
+  document.getElementById("next").addEventListener("click", () => go(index + 1));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(slides.length - 1);
+  });
+  const h = Number(location.hash.slice(1));
+  go(h >= 1 && h <= slides.length ? h - 1 : 0);
+</script>
+</body>
+</html>
